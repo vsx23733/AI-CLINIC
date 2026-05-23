@@ -179,6 +179,7 @@ neuro_project/
 ├── models_dl.py           ← PyTorch CNN + training loop
 ├── liking_model.py        ← M2 (V,A)→Liking + surface + optimal zone
 ├── gap_analysis.py        ← GapReport + text formatting
+├── main.py                ← CLI orchestrator (interactive menu + subcommands)
 ├── _smoke_test.py         ← end-to-end test on synthetic data
 ├── advisor/               ← stages 10–13
 │   ├── __init__.py
@@ -464,7 +465,36 @@ Serialises everything as **structured text**, ready to paste into an LLM prompt.
 
 ---
 
-## 5. Quickstart
+## 5. CLI orchestrator (`main.py`)
+
+A single entry point exposes the whole pipeline.
+
+```bash
+# Interactive menu (default — no argument)
+python -m neuro_project.main
+
+# Scripted subcommands
+python -m neuro_project.main status                              # inventory
+python -m neuro_project.main extract --subjects 01,02-04         # stage 2
+python -m neuro_project.main extract-spec --subjects 01          # stage 5 DL prep
+python -m neuro_project.main train-window --model RandomForest   # stages 4a + 5
+python -m neuro_project.main train-lovo                          # stages 4b + 5
+python -m neuro_project.main train-cnn --subject 01 --epochs 10  # stage 5 DL
+python -m neuro_project.main save-models --subject 01 --level window
+python -m neuro_project.main liking --kind kernel_ridge          # stages 7-8
+python -m neuro_project.main predict --subject 01 --model RandomForest \
+                                     --description "30s car ad, fast cuts"
+python -m neuro_project.main advise --report gap_report \
+                                    --genre automotive --duration-s 30 \
+                                    --ollama-model gemma4:latest
+python -m neuro_project.main loop --old gap_report_v1 --new gap_report_v2
+python -m neuro_project.main smoke                               # both smoke tests
+python -m neuro_project.main --help                              # full subcommand list
+```
+
+The interactive menu calls the same `cmd_*` functions and prompts for each input with defaults. Subjects accept ranges and lists: `01,02-04` → `['01','02','03','04']`; empty = all 32 subjects.
+
+## 6. Quickstart (programmatic)
 
 ```python
 # 1. Window-level CV over all subjects, all classical models
@@ -527,7 +557,7 @@ summary = compare_gaps(report_old=report, report_new=report_v2)
 print(format_summary(summary))
 ```
 
-## 6. Sanity check that everything works
+## 7. Sanity check that everything works
 
 ```bash
 # core pipeline (stages 2-9)
@@ -539,7 +569,7 @@ Both should end with `ALL CHECKS PASSED`. The advisor test mocks the LLM with a 
 
 ---
 
-## 7. Known limitations / not implemented
+## 8. Known limitations / not implemented
 
 - **Negative R² at window-level** on DEAP: this is structural (1 label per 60 s video; ~465 windows share the same target). The honest reading → use the video-level (LOVO) metric.
 - **40 videos per subject** = small for continuous regression. The standard DEAP protocol of high/low classification (threshold 5) works better with these features.
