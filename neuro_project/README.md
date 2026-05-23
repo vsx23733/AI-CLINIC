@@ -92,7 +92,7 @@ From a viewer's **physiological response**, predict their `[Valence, Arousal]`, 
                               │   beyond, the actual ad must come from an external source
                               ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│ 10. PROMPT BUILDER                                  [to implement]   │
+│ 10. PROMPT BUILDER                                  [implemented]   │
 │   Input 1 : output of format_report(report)  ← stage 9               │
 │   Input 2 : ad metadata (text provided by the user)                  │
 │             genre, tempo, palette, segments, target audience         │
@@ -102,7 +102,7 @@ From a viewer's **physiological response**, predict their `[Valence, Arousal]`, 
                               │
                               ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│ 11. LLM ADVISOR (pretrained, text-in / text-out)    [to implement]   │
+│ 11. LLM ADVISOR (pretrained, text-in / text-out)    [implemented]   │
 │   Model : Claude / GPT / Llama / Mistral (your choice)               │
 │   Reads the prompt → produces targeted creative advice :             │
 │     "raise tempo in mid-section, warmer palette,                     │
@@ -115,7 +115,7 @@ From a viewer's **physiological response**, predict their `[Valence, Arousal]`, 
                               │
                               ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│ 12. ACTIONABLE RECOMMENDATIONS                      [to implement]   │
+│ 12. ACTIONABLE RECOMMENDATIONS                      [implemented]   │
 │   Structured advice per segment + global :                           │
 │     - segment 0:28-0:41 : boost arousal (+fast cut, music swell),    │
 │       keep positive valence (warm colors)                            │
@@ -126,7 +126,7 @@ From a viewer's **physiological response**, predict their `[Valence, Arousal]`, 
                               │
                               ▼
 ┌────────────────────────────────────────────────────────────────────┐
-│ 13. CLOSED LOOP (re-measurement)                    [to implement]   │
+│ 13. CLOSED LOOP (re-measurement)                    [implemented]   │
 │   Re-edited ad → re-run the subject (or a panel) measuring EEG       │
 │   → stages 2 → 9 → 11 on the new version                             │
 │   → compare gap(v_old) vs gap(v_new) : did Liking improve?           │
@@ -157,10 +157,10 @@ The visual separator after stage 9 marks two important things:
 | 7  | persisted models | M1 + M2 loaded | `models_classical.py` · `liking_model.py` |
 | 8  | M2 | `ResponseSurface` + `OptimalZone` | `liking_model.py` |
 | 9  | M1.predict + zone | `GapReport` + text | `gap_analysis.py` |
-| 10 | text report + ad metadata | LLM prompt | *to create* `advisor/prompt_builder.py` |
-| 11 | prompt | advice text | *to create* `advisor/llm_advisor.py` |
-| 12 | advice text | structured recommendations (JSON) | *to create* `advisor/recommendations.py` |
-| 13 | re-edited ad + re-measured EEG | comparison gap_old vs gap_new | *to create* `advisor/closed_loop.py` |
+| 10 | text report + ad metadata | LLM prompt | `advisor/prompt_builder.py` |
+| 11 | prompt | advice text (JSON) | `advisor/llm_advisor.py` (Ollama) |
+| 12 | advice text | structured recommendations (JSON) | `advisor/recommendations.py` |
+| 13 | re-edited ad + re-measured EEG | comparison gap_old vs gap_new | `advisor/closed_loop.py` |
 
 ---
 
@@ -180,6 +180,13 @@ neuro_project/
 ├── liking_model.py        ← M2 (V,A)→Liking + surface + optimal zone
 ├── gap_analysis.py        ← GapReport + text formatting
 ├── _smoke_test.py         ← end-to-end test on synthetic data
+├── advisor/               ← stages 10–13
+│   ├── __init__.py
+│   ├── prompt_builder.py  ← AdMetadata + build_prompt(report, ad_metadata)
+│   ├── llm_advisor.py     ← Ollama client (stdlib urllib, no deps) + advise()
+│   ├── recommendations.py ← parse + validate LLM JSON → RecommendationSet
+│   ├── closed_loop.py     ← compare_gaps(old, new) → ImprovementSummary
+│   └── _smoke_test.py     ← fixture test ; live Ollama if reachable
 └── artifacts/             ← (created on demand)
     ├── *.pkl  /  *.csv
     └── models/  *.joblib  *.pt
@@ -491,14 +498,44 @@ from neuro_project.models_dl import TrainConfig, train_cnn
 X, y, vids = extract_subject_spectrograms("01")
 model, res = train_cnn(X[:1500], y[:1500], X[1500:], y[1500:],
                        cfg=TrainConfig(epochs=15))
+
+# 6. Advisor (stages 10-13) — Ollama-powered creative advice
+#    Pre-req: `ollama serve` running locally, model pulled (e.g. `ollama pull llama3.1`)
+from neuro_project.advisor.prompt_builder import AdMetadata, AdSegment
+from neuro_project.advisor.llm_advisor   import advise, OllamaConfig
+from neuro_project.advisor.recommendations import parse_advice, format_recommendations
+from neuro_project.advisor.closed_loop  import compare_gaps, format_summary
+
+ad = AdMetadata(
+    title="EcoBoost Drive 30s", duration_s=30.0,
+    genre="automotive", target_audience="25-45 urban, eco-curious",
+    tempo="moderate -> fast finale", palette="cool blues + warm sunset payoff",
+    segments=[AdSegment(0, 8, "commute"),
+              AdSegment(8, 22, "open road"),
+              AdSegment(22, 30, "logo")],
+)
+
+# stage 10+11 : prompt + LLM call → raw JSON text
+raw = advise(report, ad, OllamaConfig(model="llama3.1", temperature=0.3))
+
+# stage 12 : parse + validate + render
+rs = parse_advice(raw)
+print(format_recommendations(rs))
+
+# stage 13 : after re-editing the ad and re-measuring → new report
+summary = compare_gaps(report_old=report, report_new=report_v2)
+print(format_summary(summary))
 ```
 
 ## 6. Sanity check that everything works
 
 ```bash
+# core pipeline (stages 2-9)
 python neuro_project/_smoke_test.py
+# advisor (stages 10-13) — Ollama live call is optional & skipped if absent
+python neuro_project/advisor/_smoke_test.py
 ```
-→ should print `ALL CHECKS PASSED`. Requires neither DEAP nor torch (CNN section skipped if torch absent).
+Both should end with `ALL CHECKS PASSED`. The advisor test mocks the LLM with a fixture JSON, so it runs even without Ollama; if Ollama is reachable and the model is pulled, an additional live call is performed.
 
 ---
 
@@ -506,5 +543,5 @@ python neuro_project/_smoke_test.py
 
 - **Negative R² at window-level** on DEAP: this is structural (1 label per 60 s video; ~465 windows share the same target). The honest reading → use the video-level (LOVO) metric.
 - **40 videos per subject** = small for continuous regression. The standard DEAP protocol of high/low classification (threshold 5) works better with these features.
-- **Stage 10 LLM Advisor** not implemented — `format_report` already produces the text block expected as input. Plug into your favourite LLM API.
+- **Stages 10–13 (LLM advisor + closed loop)** now implemented over **Ollama** (local LLM). You need an Ollama server running (`ollama serve`) with a model pulled (`ollama pull llama3.1` or any tag). Switch model via `OllamaConfig(model="...")`. JSON output is enforced server-side (`format='json'`); the parser tolerates minor noise and accumulates `parse_warnings`.
 - **DEAP videos not bundled** with the dataset (YouTube links only). The stage 9 → 10 boundary is precisely this: the ad must be supplied **from outside** DEAP (text, or a multimodal LLM in production).

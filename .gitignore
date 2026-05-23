@@ -68,6 +68,18 @@ notebooks/artifacts/
 *.rar
 *.7z
 
+# ===== Documents (research papers, reports, briefs) =====
+*.pdf
+*.PDF
+*.doc
+*.docx
+*.DOC
+*.DOCX
+*.odt
+*.rtf
+*.ppt
+*.pptx
+
 # ===== Notebook backups =====
 *.ipynb.bak
 *.bak
