@@ -13,6 +13,11 @@ from sklearn.dummy import DummyRegressor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from tqdm.auto import tqdm
+import random
+from sklearn.model_selection import GroupKFold
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.metrics import r2_score, mean_absolute_error, root_mean_squared_error
 
 # np.trapz est déprécié en numpy >= 2 ; np.trapezoid est le nouveau nom.
 trapz = getattr(np, "trapezoid", np.trapz)
@@ -106,21 +111,21 @@ def extract_subject_features(subject_id, force=False):
 
         start = BASELINE_SAMPLES                   # <-- on saute la baseline pre-stimulus
         while start + WINDOW_SIZE <= eeg.shape[1]:
-                eeg_feats = []
-                for ch in EEG_CHANNELS:
-                    eeg_feats.extend(bandpower(eeg[ch, start:start+WINDOW_SIZE], BANDS))
-                periph_feats = peripheral_features(periph[:, start:start+WINDOW_SIZE])
-                X_list.append(np.concatenate([eeg_feats, periph_feats]))
-                y_list.append(va)
-                vid_list.append(trial)
-                start += STEP_SIZE
+            eeg_feats = []
+            for ch in EEG_CHANNELS:
+                eeg_feats.extend(bandpower(eeg[ch, start:start+WINDOW_SIZE], BANDS))
+            periph_feats = peripheral_features(periph[:, start:start+WINDOW_SIZE])
+            X_list.append(np.concatenate([eeg_feats, periph_feats]))
+            y_list.append(va)
+            vid_list.append(trial)
+            start += STEP_SIZE
 
-        X = np.array(X_list, dtype=np.float32)
-        y = np.array(y_list, dtype=np.float32)
-        vids = np.array(vid_list, dtype=np.int16)
-        np.savez_compressed(cache_file, X=X, y=y, video_ids=vids)
-        return X, y, vids
-    
+    X = np.array(X_list, dtype=np.float32)
+    y = np.array(y_list, dtype=np.float32)
+    vids = np.array(vid_list, dtype=np.int16)
+    np.savez_compressed(cache_file, X=X, y=y, video_ids=vids)
+    return X, y, vids
+
 
 def load_subject(subject_id, cache_dir=CACHE_DIR):
     path = os.path.join(cache_dir, f"s{subject_id}_full_v2.npz")
@@ -128,4 +133,50 @@ def load_subject(subject_id, cache_dir=CACHE_DIR):
         raise FileNotFoundError(f"Cache absent : {path}")
     d = np.load(path)
     return d["X"], d["y"], d["video_ids"]
+
+
+
+if __name__ == "__main__":
+    # Demo : tirage d'un sujet au hasard + window-level GroupKFold pour verification.
+    # Cet bloc ne s'execute que si on lance "python data_processing.py" directement,
+    # pas lors d'un "import" depuis un autre module du package.
+
+    random_subject_id = f"{random.randint(1, 32):02d}"
+    X, y, vids = load_subject(random_subject_id, CACHE_DIR)
+
+    kfold_spliter = GroupKFold(n_splits=5)
+    results = {}
+    for i, (train_index, test_index) in enumerate(kfold_spliter.split(X, y, groups=vids)):
+        custom_scaler = StandardScaler().fit(X[train_index])
+        scaled_train_X = custom_scaler.transform(X[train_index])
+        scaled_test_X = custom_scaler.transform(X[test_index])
+
+        regressor = RandomForestRegressor(random_state=42, n_jobs=-1)
+        regressor.fit(scaled_train_X, y[train_index])
+
+        y_pred = regressor.predict(scaled_test_X)
+        y_true = y[test_index]
+
+        mae_score = mean_absolute_error(y_true, y_pred, multioutput='raw_values')
+        r2 = r2_score(y_true, y_pred, multioutput='raw_values')
+        rmse_score = root_mean_squared_error(y_true, y_pred, multioutput='raw_values')
+
+        results[i] = {
+            "mae":  [mae_score[0],  mae_score[1]],
+            "r2":   [r2[0],         r2[1]],
+            "rmse": [rmse_score[0], rmse_score[1]],
+        }
+
+    V_metrics = {"mae": 0.0, "r2": 0.0, "rmse": 0.0}
+    A_metrics = {"mae": 0.0, "r2": 0.0, "rmse": 0.0}
+    for v in results.values():
+        for k in ("mae", "r2", "rmse"):
+            V_metrics[k] += v[k][0]
+            A_metrics[k] += v[k][1]
+    V_metrics = {k: v / len(results) for k, v in V_metrics.items()}
+    A_metrics = {k: v / len(results) for k, v in A_metrics.items()}
+
+    print(f"Sujet {random_subject_id} - moyenne sur {len(results)} folds")
+    print(f"  Valence : {V_metrics}")
+    print(f"  Arousal : {A_metrics}")
 

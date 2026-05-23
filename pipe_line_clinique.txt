@@ -1,0 +1,100 @@
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 1. RAW DATA SOURCES                                                        │
+│   DEAP  data_preprocessed_python/sXX.dat  (pickle)                         │
+│         data  : (40 trials, 40 channels, 8064 samples @128Hz)              │
+│         labels: (40, 4) = [Valence, Arousal, Dominance, Liking] 1–9        │
+│   SEED_EEG / GAPED  (secondary datasets, present in data/)                 │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 2. DATA PROCESSING   ◀── (the .py file you are building now)               │
+│   • Load sXX.dat (pickle, latin-1)                                         │
+│   • Remove 3 s pre-stimulus baseline (384 samples)                         │
+│   • Sliding window: 2 s (256) , step 0.125 s (16)                          │
+│   • EEG features : 14 ch × 5 bands (Welch bandpower)        = 70           │
+│   • Peripheral   : zEMG/tEMG/GSR/Resp/BVP/Temp stats        = 15           │
+│   •                                              X = 85 features           │
+│   • y = [Valence, Arousal]   ;  group = video_id (0..39)                   │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                 │  persist (no recompute next time)
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 3. CACHED / EXTRACTED DATA                                                 │
+│   notebooks/cache_full_v2/sXX_full_v2.npz   → X, y, video_ids              │
+│   notebooks/sXX_processed.npy               → (earlier processing variant) │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+            ┌────────────────────┼─────────────────────────┐
+            ▼                    ▼                          ▼
+┌────────────────────┐ ┌────────────────────┐ ┌──────────────────────────┐
+│ 4a. SPLIT          │ │ 4b. SPLIT          │ │ 4c. SPLIT                │
+│ GroupKFold(5)      │ │ Leave-One-Video-Out│ │ train/test (DL notebooks)│
+│ window-level       │ │ 40 folds / subject │ │                          │
+│ (groups = video)   │ │ (honest framing)   │ │                          │
+└─────────┬──────────┘ └─────────┬──────────┘ └────────────┬─────────────┘
+          │                      │                          │
+          ▼                      ▼                          ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 5. MODELS (subject-specific)                                               │
+│   Classical ML            Regression V/A            Deep Learning          │
+│   Classical_ML_Algorithms VA-Regression.ipynb       CNN / GRU / BiLSTM /   │
+│   (sklearn classif.)      RF · GradientBoost ·       Autoencoder-Transf.   │
+│                           Ridge · Dummy              (training took days)   │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                 │  persist
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 6. ARTIFACTS (no restart from zero)                                        │
+│   artifacts/df_results.pkl/.csv   (window-level metrics)                    │
+│   artifacts/df_lovo.pkl/.csv      (video-level metrics)                     │
+│   artifacts/df_imp.pkl/.csv       (feature importance)                      │
+│   artifacts/models/*.joblib  ·  neuromarketing_model.pkl  ·  DL weights     │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+            ┌────────────────────┼────────────────────┐
+            ▼                    ▼                     ▼
+┌────────────────────┐ ┌──────────────────┐ ┌──────────────────────────────┐
+│ 7a. EVALUATION     │ │ 7b. EXPLAINABILITY│ │ 7c. EDA                      │
+│ Models-Evaluation  │ │ EEG-XAI.ipynb     │ │ EDA_DEAP / EEG_Query / test  │
+│ compare all models │ │ feature attrib.   │ │ exploration & checks         │
+└─────────┬──────────┘ └────────┬─────────┘ └──────────────────────────────┘
+          └───────────┬─────────┘
+                       ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 8. FINAL APPLICATION                                                       │
+│   Predicted [Valence, Arousal]  →  optimal-zone scoring  (test.ipynb)      │
+│   →  Neuromarketing content personalization / recommendation              │
+└──────────────────────────────────────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 9. GAP ANALYSIS  (per ad, optionally per time-segment of the ad)          │
+│   measured (V̂, Â)  vs  (V*, A*)                                            │
+│   ΔV = V*−V̂ , ΔA = A*−Â , predicted Liking vs max Liking                   │
+│   → "segment 0:30–0:40 : arousal too low, valence ok, liking 3.1/9"        │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                 │
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 10. PROMPT BUILDER  (your code serialises numbers → TEXT)                  │
+│   IN  ▸ emotional report (V̂, Â, gap, weak segments)                       │
+│   IN  ▸ ad metadata / description  ◀── supplied externally, NOT from DEAP  │
+│        (genre, tempo, scene list, target audience)                        │
+│   OUT ▸ a single natural-language prompt                                   │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                 │   ═══ boundary: video is NOT in DEAP ═══
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 11. PRETRAINED LLM  (GPT / Claude / Llama — text in, text out)            │
+│   Reads the report + ad description                                       │
+│   → creative advice to move (V̂,Â) toward (V*,A*) for higher Liking        │
+│     e.g. "raise tempo in the mid-section, warmer palette,                  │
+│           add a surprise beat at 0:35 to lift arousal without              │
+│           dropping valence"                                                │
+└───────────────────────────────┬──────────────────────────────────────────┘
+                                 ▼
+┌──────────────────────────────────────────────────────────────────────────┐
+│ 12. OUTPUT : Actionable recommendations to re-edit the advertising        │
+│      (loop: revised ad → new measurement → re-evaluate)                    │
+└──────────────────────────────────────────────────────────────────────────┘
