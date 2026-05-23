@@ -34,7 +34,15 @@ class OllamaConfig:
     model:       str   = "gemma4:latest"        # any locally-pulled tag works
     temperature: float = 0.4               # lower = more deterministic advice
     format_json: bool  = True              # constrain output to valid JSON
-    timeout_s:   float = 120.0
+    timeout_s:   float = 600.0             # 10 min: covers cold-start model load
+    keep_alive:  str   = "10m"             # keep model resident between calls
+    # Reasoning models (gemma4, qwen3, deepseek-r1...) emit a private "thinking"
+    # trace BEFORE the answer. For structured JSON output we don't want that —
+    # `think=False` makes Ollama skip it so all tokens go to the answer.
+    think:       Optional[bool] = False
+    # Generous default : with format='json' the model may still emit some
+    # whitespace, and a few hundred tokens are needed for the JSON itself.
+    num_predict: int   = 4096
     options:     Dict[str, Any] = field(default_factory=dict)
 
 
@@ -84,12 +92,29 @@ class OllamaClient:
         except Exception:
             return False
 
+    def preload(self, model: Optional[str] = None) -> None:
+        """Load the model into RAM without generating tokens. Sending an empty
+        prompt with num_predict=0 makes Ollama load weights then return ; the
+        next chat() call is then fast. Useful before a JSON-constrained call
+        whose cold-start would otherwise hit the timeout."""
+        payload = {
+            "model": model or self.cfg.model,
+            "prompt": "",
+            "stream": False,
+            "keep_alive": self.cfg.keep_alive,
+            "options": {"num_predict": 0},
+        }
+        self._post("/api/generate", payload)
+
     def chat(
         self, system: str, user: str,
         model: Optional[str] = None,
     ) -> str:
         """Send a (system, user) pair, return the assistant string content."""
-        opts: Dict[str, Any] = {"temperature": self.cfg.temperature}
+        opts: Dict[str, Any] = {
+            "temperature": self.cfg.temperature,
+            "num_predict": self.cfg.num_predict,
+        }
         opts.update(self.cfg.options)
         payload: Dict[str, Any] = {
             "model":   model or self.cfg.model,
@@ -99,15 +124,33 @@ class OllamaClient:
             ],
             "stream":  False,
             "options": opts,
+            "keep_alive": self.cfg.keep_alive,
         }
         if self.cfg.format_json:
             payload["format"] = "json"
+        if self.cfg.think is not None:
+            payload["think"] = self.cfg.think       # ignored by non-reasoning models
         resp = self._post("/api/chat", payload)
-        # Ollama returns {"message": {"role":"assistant","content":"..."}}
+
+        # Ollama returns {"message": {"role":"assistant","content":"...",
+        #                              "thinking": "..."  # reasoning models only
+        #                            }, "done_reason": "stop"|"length"|...}
         msg = resp.get("message") or {}
-        content = msg.get("content")
+        content  = (msg.get("content")  or "").strip()
+        thinking = (msg.get("thinking") or "").strip()
+        done_reason = resp.get("done_reason", "")
+
+        if not content and thinking:
+            # Reasoning model spent all tokens in the thinking trace before
+            # producing the answer. Try to salvage JSON from the thinking
+            # text ; the parser is tolerant.
+            return thinking
         if not content:
-            raise OllamaError(f"No content in Ollama response : {resp!r}")
+            hint = ""
+            if done_reason == "length":
+                hint = (" (done_reason=length : increase OllamaConfig.num_predict, "
+                        "currently {})".format(self.cfg.num_predict))
+            raise OllamaError(f"Empty response from Ollama{hint}. Full resp: {resp!r}")
         return content
 
 

@@ -325,9 +325,15 @@ def cmd_advise(report_name: str = "gap_report",
                target_audience: str = "", tempo: str = "",
                palette: str = "", model_tag: Optional[str] = None,
                temperature: float = 0.4,
+               timeout_s: float = 600.0,
+               keep_alive: str = "10m",
+               preload: bool = True,
+               think: Optional[bool] = False,
+               num_predict: int = 4096,
                save_name: str = "advice") -> None:
     """Stages 10-11-12 — build prompt, call Ollama, parse, save."""
-    from neuro_project.advisor.llm_advisor   import OllamaConfig, advise
+    import time
+    from neuro_project.advisor.llm_advisor   import OllamaClient, OllamaConfig, advise
     from neuro_project.advisor.prompt_builder import AdMetadata
     from neuro_project.advisor.recommendations import (format_recommendations,
                                                         parse_advice,
@@ -340,17 +346,39 @@ def cmd_advise(report_name: str = "gap_report",
         target_audience=target_audience, tempo=tempo,
         palette=palette, free_text=description,
     )
-    cfg_kwargs = {"temperature": temperature}
+    cfg_kwargs: dict = {
+        "temperature": temperature,
+        "timeout_s":   timeout_s,
+        "keep_alive":  keep_alive,
+        "think":       think,
+        "num_predict": num_predict,
+    }
     if model_tag:
         cfg_kwargs["model"] = model_tag
     cfg = OllamaConfig(**cfg_kwargs)
-    print(f"  Ollama model = {cfg.model}  temperature = {cfg.temperature}")
+    print(f"  Ollama model = {cfg.model}  temperature = {cfg.temperature}  "
+          f"timeout = {cfg.timeout_s:.0f}s  keep_alive = {cfg.keep_alive}")
+    print(f"  think        = {cfg.think}  num_predict = {cfg.num_predict}")
 
+    if preload:
+        print("  Pre-loading model into RAM (first call only)...", end="", flush=True)
+        t0 = time.time()
+        try:
+            OllamaClient(cfg).preload()
+            print(f" done in {time.time() - t0:.1f}s")
+        except Exception as e:                                                # noqa: BLE001
+            print(f" SKIPPED ({e})")
+
+    print("  Generating advice (may take a few minutes on CPU)...", flush=True)
+    t0 = time.time()
     try:
         raw = advise(report, ad, cfg)
     except Exception as e:                                                    # noqa: BLE001
-        print(f"  Ollama call failed : {e}")
+        print(f"  Ollama call failed after {time.time() - t0:.1f}s : {e}")
+        print("  Hint: increase --timeout-s, try a smaller model, "
+              "or run `ollama run <model>` once to pre-warm it.")
         return
+    print(f"  Generated in {time.time() - t0:.1f}s ({len(raw)} chars)")
 
     rs = parse_advice(raw)
     print(); print(format_recommendations(rs)); print()
@@ -548,6 +576,17 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--palette",    default="")
     sp.add_argument("--ollama-model", default=None)
     sp.add_argument("--temperature", type=float, default=0.4)
+    sp.add_argument("--timeout-s",   type=float, default=600.0,
+                    help="Request timeout in seconds (default 600).")
+    sp.add_argument("--keep-alive",  default="10m",
+                    help="Keep model in RAM after the call (Ollama keep_alive).")
+    sp.add_argument("--no-preload",  action="store_true",
+                    help="Skip the warm-up call.")
+    sp.add_argument("--think",       action="store_true",
+                    help="Enable the model's reasoning trace (slower). "
+                         "Default OFF — structured JSON tasks don't need it.")
+    sp.add_argument("--num-predict", type=int, default=4096,
+                    help="Max output tokens (default 4096).")
 
     sp = sub.add_parser("loop", help="Stage 13 : closed-loop comparison")
     sp.add_argument("--old", required=True)
@@ -587,7 +626,12 @@ def main(argv: Optional[List[str]] = None) -> int:
                                           genre=args.genre, target_audience=args.audience,
                                           tempo=args.tempo, palette=args.palette,
                                           model_tag=args.ollama_model,
-                                          temperature=args.temperature)
+                                          temperature=args.temperature,
+                                          timeout_s=args.timeout_s,
+                                          keep_alive=args.keep_alive,
+                                          preload=not args.no_preload,
+                                          think=args.think,
+                                          num_predict=args.num_predict)
     elif c == "loop":          cmd_loop(args.old, args.new)
     elif c == "status":        cmd_status()
     elif c == "smoke":         cmd_smoke()
