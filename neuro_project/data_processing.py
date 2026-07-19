@@ -34,7 +34,7 @@ BANDS = [(4, 8), (8, 12), (12, 16), (16, 25), (25, 45)]
 
 SAMPLE_RATE   = 128
 WINDOW_SIZE   = 256        # 2 s
-STEP_SIZE     = 16         # 0.125 s
+STEP_SIZE     = 128        # 1.0 s (50% overlap w/ WINDOW_SIZE=256, was 16 / 94% overlap)
 BASELINE_SEC  = 3
 BASELINE_SAMPLES = BASELINE_SEC * SAMPLE_RATE   # 384 : pré-stimulus DEAP, exclu
 WELCH_NPERSEG = 128        # < WINDOW_SIZE -> Welch moyenne vraiment les segments
@@ -91,9 +91,24 @@ PERIPH_FEATURE_NAMES = [
 EEG_FEATURE_NAMES = [f'ch{ch}_{band}' for ch in EEG_CHANNELS for band in BAND_NAMES]
 ALL_FEATURE_NAMES = EEG_FEATURE_NAMES + PERIPH_FEATURE_NAMES
 
+def _feature_vector(eeg_trial, periph_trial, start, size):
+    """85-dim feature vector (70 EEG bandpowers + 15 peripheral stats) over
+    [start, start+size) of one trial. Used both for stimulus windows and for
+    the pre-stimulus baseline (same shape, so they can be subtracted)."""
+    eeg_feats = []
+    for ch in EEG_CHANNELS:
+        eeg_feats.extend(bandpower(eeg_trial[ch, start:start + size], BANDS))
+    periph_feats = peripheral_features(periph_trial[:, start:start + size])
+    return np.concatenate([eeg_feats, periph_feats])
+
+
 def extract_subject_features(subject_id, force=False):
-    """Features (EEG+periph) d'un sujet, cache .npz. Returns X(n,85), y(n,2), video_ids(n,)."""
-    cache_file = os.path.join(CACHE_DIR, f's{subject_id}_full_v2.npz')
+    """Features (EEG+periph) d'un sujet, cache .npz. Returns X(n,85), y(n,2), video_ids(n,).
+    Each window's features are baseline-corrected: raw_feats - features(pre-stimulus
+    baseline), to remove per-trial/per-subject offset drift (absolute bandpower/EMG
+    levels vary a lot between people and sessions; the baseline never carried any
+    signal downstream before this, it was just dropped)."""
+    cache_file = os.path.join(CACHE_DIR, f's{subject_id}_full_v4.npz')
     if os.path.exists(cache_file) and not force:
         d = np.load(cache_file)
         return d['X'], d['y'], d['video_ids']
@@ -109,13 +124,12 @@ def extract_subject_features(subject_id, force=False):
         periph = data[trial, 32:40]
         va     = labels[trial, :2]                 # [Valence, Arousal]
 
+        baseline_feats = _feature_vector(eeg, periph, 0, BASELINE_SAMPLES)
+
         start = BASELINE_SAMPLES                   # <-- on saute la baseline pre-stimulus
         while start + WINDOW_SIZE <= eeg.shape[1]:
-            eeg_feats = []
-            for ch in EEG_CHANNELS:
-                eeg_feats.extend(bandpower(eeg[ch, start:start+WINDOW_SIZE], BANDS))
-            periph_feats = peripheral_features(periph[:, start:start+WINDOW_SIZE])
-            X_list.append(np.concatenate([eeg_feats, periph_feats]))
+            feats = _feature_vector(eeg, periph, start, WINDOW_SIZE) - baseline_feats
+            X_list.append(feats)
             y_list.append(va)
             vid_list.append(trial)
             start += STEP_SIZE
@@ -128,7 +142,7 @@ def extract_subject_features(subject_id, force=False):
 
 
 def load_subject(subject_id, cache_dir=CACHE_DIR):
-    path = os.path.join(cache_dir, f"s{subject_id}_full_v2.npz")
+    path = os.path.join(cache_dir, f"s{subject_id}_full_v4.npz")
     if not os.path.exists(path):
         raise FileNotFoundError(f"Cache absent : {path}")
     d = np.load(path)

@@ -10,6 +10,7 @@ Two ways to use it:
         python -m neuro_project.main extract        --subjects 01,02
         python -m neuro_project.main extract-spec   --subjects 01
         python -m neuro_project.main train-window   --model RandomForest
+        python -m neuro_project.main train-window-pooled --model Ridge
         python -m neuro_project.main train-lovo
         python -m neuro_project.main train-cnn      --subject 01 --epochs 10
         python -m neuro_project.main save-models    --subject 01
@@ -151,6 +152,42 @@ def cmd_train_window(subjects: Iterable[str], model: Optional[str] = None,
     df = batch_window_cv(subject_ids=list(subjects), factories=factories)
     print(df.groupby("model")[[c for c in df.columns if c.startswith(("win_", "vid_"))]]
             .mean().round(3))
+    p = save_df(df, save_name)
+    print(f"Persisted: {p}")
+
+def cmd_train_window_pooled(subjects: Iterable[str], model: Optional[str] = None,
+                            save_name: str = "df_results_pooled") -> None:
+    from neuro_project.models_classical import MODEL_FACTORIES, batch_window_cv_pooled
+    factories = MODEL_FACTORIES if not model else {model: MODEL_FACTORIES[model]}
+    print(f"Stage 4a+5 : window-level CV, models = {list(factories)}, subjects = {len(list(subjects))}")
+    df = batch_window_cv_pooled(subject_ids=list(subjects), factories=factories)
+    print(df.groupby("model")[[c for c in df.columns if c.startswith(("win_", "vid_"))]]
+            .mean().round(3))
+    p = save_df(df, save_name)
+    print(f"Persisted: {p}")
+
+
+def cmd_train_video_pooled(subjects: Iterable[str], model: Optional[str] = None,
+                           save_name: str = "df_results_video_pooled") -> None:
+    """Video-level pooled regression CV across subjects (1280 rows, GroupKFold
+    by subject -> tests generalization to unseen people)."""
+    from neuro_project.models_classical import MODEL_FACTORIES, batch_video_cv_pooled
+    factories = MODEL_FACTORIES if not model else {model: MODEL_FACTORIES[model]}
+    print(f"Video-pooled : models = {list(factories)}, subjects = {len(list(subjects))}")
+    df = batch_video_cv_pooled(subject_ids=list(subjects), factories=factories)
+    print(df.set_index("model")[["mae_V", "mae_A", "r2_V", "r2_A"]].round(3))
+    p = save_df(df, save_name)
+    print(f"Persisted: {p}")
+
+
+def cmd_train_video_pooled_clf(subjects: Iterable[str], model: Optional[str] = None,
+                               save_name: str = "df_results_video_pooled_clf") -> None:
+    """Video-level pooled classification CV (high/low @ threshold 5) across subjects."""
+    from neuro_project.models_classical import CLF_FACTORIES, batch_video_cv_pooled_clf
+    factories = CLF_FACTORIES if not model else {model: CLF_FACTORIES[model]}
+    print(f"Video-pooled (classification) : models = {list(factories)}, subjects = {len(list(subjects))}")
+    df = batch_video_cv_pooled_clf(subject_ids=list(subjects), factories=factories)
+    print(df.set_index("model")[["acc_V", "acc_A", "f1_V", "f1_A"]].round(3))
     p = save_df(df, save_name)
     print(f"Persisted: {p}")
 
@@ -448,7 +485,7 @@ MENU = """
 [4]  Train LOVO video-level (4b+5)           [10] Closed-loop comparison (13)
 [5]  Train CNN deep learning (5 DL)          [11] Pipeline status
 [6]  Save final models (6)                   [12] Run smoke tests
-                                              [0]  Exit
+[13] Train window-level pooled (4a+5 pooled) [0]  Exit
 """
 
 def interactive() -> None:
@@ -466,8 +503,9 @@ def interactive() -> None:
                 cmd_extract_spec(parse_subjects(arg))
             elif choice == "3":
                 arg = ask("Subjects", "01")
-                model = ask("Model (RandomForest/GradientBoost, empty=both)", "")
+                model = ask("Model (RandomForest/GradientBoost/Ridge, empty=all)", "")
                 cmd_train_window(parse_subjects(arg), model=model or None)
+
             elif choice == "4":
                 arg = ask("Subjects", "01")
                 cmd_train_lovo(parse_subjects(arg))
@@ -515,6 +553,11 @@ def interactive() -> None:
                 cmd_status()
             elif choice == "12":
                 cmd_smoke()
+            elif choice == "13":
+                arg = ask("Subjects (e.g. 01,02-04, or empty=all)", "")
+                model = ask("Model (RandomForest/GradientBoost/Ridge, empty=all)", "")
+                cmd_train_window_pooled(parse_subjects(arg or None), model=model or None)
+
             else:
                 print("  Unknown choice.")
         except KeyboardInterrupt:
@@ -540,7 +583,23 @@ def build_parser() -> argparse.ArgumentParser:
 
     sp = sub.add_parser("train-window", help="Stage 4a + 5 classical : window-level CV")
     sp.add_argument("--subjects", default=None)
-    sp.add_argument("--model", default=None, choices=["RandomForest", "GradientBoost"])
+    sp.add_argument("--model", default=None, choices=["RandomForest", "GradientBoost", "Ridge"])
+
+    sp = sub.add_parser("train-window-pooled",
+                        help="Stage 4a + 5 classical : cross-subject pooled window-level CV")
+    sp.add_argument("--subjects", default=None)
+    sp.add_argument("--model", default=None, choices=["RandomForest", "GradientBoost", "Ridge"])
+
+    sp = sub.add_parser("train-video-pooled",
+                        help="Cross-subject pooled video-level regression CV (1280 rows)")
+    sp.add_argument("--subjects", default=None)
+    sp.add_argument("--model", default=None, choices=["RandomForest", "GradientBoost", "Ridge"])
+
+    sp = sub.add_parser("train-video-pooled-clf",
+                        help="Cross-subject pooled video-level classification CV (high/low @ 5)")
+    sp.add_argument("--subjects", default=None)
+    sp.add_argument("--model", default=None,
+                    choices=["LogisticRegression", "RandomForestClf", "GradientBoostClf"])
 
     sp = sub.add_parser("train-lovo", help="Stage 4b + 5 classical : LOVO video-level")
     sp.add_argument("--subjects", default=None)
@@ -610,6 +669,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if   c == "extract":       cmd_extract(parse_subjects(args.subjects))
     elif c == "extract-spec":  cmd_extract_spec(parse_subjects(args.subjects))
     elif c == "train-window":  cmd_train_window(parse_subjects(args.subjects), model=args.model)
+    elif c == "train-window-pooled": cmd_train_window_pooled(parse_subjects(args.subjects), model=args.model)
+    elif c == "train-video-pooled": cmd_train_video_pooled(parse_subjects(args.subjects), model=args.model)
+    elif c == "train-video-pooled-clf": cmd_train_video_pooled_clf(parse_subjects(args.subjects), model=args.model)
     elif c == "train-lovo":    cmd_train_lovo(parse_subjects(args.subjects))
     elif c == "train-cnn":     cmd_train_cnn(args.subject, epochs=args.epochs,
                                              batch_size=args.batch_size)

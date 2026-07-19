@@ -1,0 +1,114 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{koelstra2012deap}
+\citation{lee2007neuromarketing}
+\citation{russell1980circumplex}
+\@writefile{toc}{\contentsline {section}{\numberline {I}Introduction}{1}{section.1}\protected@file@percent }
+\citation{sourcecoderepo}
+\citation{alarcao2019emotions}
+\citation{welch1967psd}
+\citation{yao2024transformercnn}
+\citation{koelstra2012deap}
+\citation{lee2007neuromarketing}
+\citation{yang2015tvcommercials}
+\citation{raiesdana2022eegcar}
+\citation{xie2025physllm}
+\@writefile{toc}{\contentsline {section}{\numberline {II}Related Work}{2}{section.2}\protected@file@percent }
+\newlabel{sec:related}{{II}{2}{Related Work}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-A}}EEG-based emotion recognition}{2}{subsection.2.1}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-B}}The DEAP dataset and evaluation leakage}{2}{subsection.2.2}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-C}}Neuromarketing}{2}{subsection.2.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {II-D}}LLMs as text-only creative advisors}{2}{subsection.2.4}\protected@file@percent }
+\citation{koelstra2012deap}
+\@writefile{toc}{\contentsline {section}{\numberline {III}Dataset}{3}{section.3}\protected@file@percent }
+\newlabel{sec:data}{{III}{3}{Dataset}{section.3}{}}
+\newlabel{eq:baseline}{{1}{3}{Dataset}{equation.3.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {IV}Methodology}{3}{section.4}\protected@file@percent }
+\newlabel{sec:methodology}{{IV}{3}{Methodology}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-A}}Feature extraction}{3}{subsection.4.1}\protected@file@percent }
+\newlabel{subsec:features}{{\mbox  {IV-A}}{3}{Feature extraction}{subsection.4.1}{}}
+\citation{welch1967psd}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces The proposed pipeline. Blue boxes (top row) are trained and validated entirely on DEAP signals and self-reports. Orange boxes (bottom row) operate past the dataset boundary of Section~\ref {sec:data}: they require an externally supplied advertisement description (or, in a production system, a multimodal model with direct video access), since DEAP itself contains no video content. The loop closes by re-measuring a re-edited advertisement and feeding new physiological signals back into feature extraction.}}{4}{figure.1}\protected@file@percent }
+\newlabel{fig:pipeline}{{1}{4}{The proposed pipeline. Blue boxes (top row) are trained and validated entirely on DEAP signals and self-reports. Orange boxes (bottom row) operate past the dataset boundary of Section~\ref {sec:data}: they require an externally supplied advertisement description (or, in a production system, a multimodal model with direct video access), since DEAP itself contains no video content. The loop closes by re-measuring a re-edited advertisement and feeding new physiological signals back into feature extraction}{figure.1}{}}
+\newlabel{eq:overlap}{{2}{4}{Feature extraction}{equation.4.2}{}}
+\newlabel{eq:nwindows}{{3}{4}{Feature extraction}{equation.4.3}{}}
+\newlabel{eq:welch}{{4}{5}{Feature extraction}{equation.4.4}{}}
+\newlabel{eq:bandpower}{{5}{5}{Feature extraction}{equation.4.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-B}}Time-frequency representation for the CNN}{5}{subsection.4.2}\protected@file@percent }
+\newlabel{subsec:spectrograms}{{\mbox  {IV-B}}{5}{Time-frequency representation for the CNN}{subsection.4.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-C}}Cross-validation protocol}{5}{subsection.4.3}\protected@file@percent }
+\newlabel{subsec:splits}{{\mbox  {IV-C}}{5}{Cross-validation protocol}{subsection.4.3}{}}
+\citation{breiman2001randomforests}
+\citation{friedman2001gradientboosting}
+\citation{pedregosa2011sklearn}
+\citation{ioffe2015batchnorm}
+\citation{loshchilov2019adamw}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-D}}Predictive models for valence-arousal estimation}{6}{subsection.4.4}\protected@file@percent }
+\newlabel{subsec:models}{{\mbox  {IV-D}}{6}{Predictive models for valence-arousal estimation}{subsection.4.4}{}}
+\newlabel{eq:ridge}{{6}{6}{Predictive models for valence-arousal estimation}{equation.4.6}{}}
+\newlabel{eq:r2}{{7}{6}{Predictive models for valence-arousal estimation}{equation.4.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-E}}Liking response-surface model}{6}{subsection.4.5}\protected@file@percent }
+\newlabel{subsec:liking}{{\mbox  {IV-E}}{6}{Liking response-surface model}{subsection.4.5}{}}
+\newlabel{eq:kernelridge}{{8}{6}{Liking response-surface model}{equation.4.8}{}}
+\newlabel{eq:rbf}{{9}{6}{Liking response-surface model}{equation.4.9}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-F}}Gap analysis}{6}{subsection.4.6}\protected@file@percent }
+\newlabel{subsec:gap}{{\mbox  {IV-F}}{6}{Gap analysis}{subsection.4.6}{}}
+\newlabel{eq:gap}{{10}{6}{Gap analysis}{equation.4.10}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {IV-G}}LLM-based creative advisor and closed loop}{7}{subsection.4.7}\protected@file@percent }
+\newlabel{subsec:advisor}{{\mbox  {IV-G}}{7}{LLM-based creative advisor and closed loop}{subsection.4.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {V}Experimental Setup}{7}{section.5}\protected@file@percent }
+\newlabel{sec:experiments}{{V}{7}{Experimental Setup}{section.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VI}Results}{7}{section.6}\protected@file@percent }
+\newlabel{sec:results}{{VI}{7}{Results}{section.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {I}{\ignorespaces Window-level GroupKFold results, per-subject protocol (mean over 32 subjects $\times $ 5 folds)}}{8}{table.1}\protected@file@percent }
+\newlabel{tab:window}{{I}{8}{Window-level GroupKFold results, per-subject protocol (mean over 32 subjects $\times $ 5 folds)}{table.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {II}{\ignorespaces Video-level Leave-One-Video-Out results, per-subject protocol (mean over 32 subjects $\times $ 40 folds)}}{8}{table.2}\protected@file@percent }
+\newlabel{tab:lovo}{{II}{8}{Video-level Leave-One-Video-Out results, per-subject protocol (mean over 32 subjects $\times $ 40 folds)}{table.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces Predicted vs.\ true Valence/Arousal, LOVO, Random Forest, pooled over all 32 subjects' 1{,}280 predictions. $R^2$ here is computed on the pooled scatter and therefore differs from Table~\ref {tab:lovo}'s per-subject-averaged value; both describe the same underlying weakness. Vertical striping reflects DEAP's discrete 1-9 rating scale.}}{8}{figure.2}\protected@file@percent }
+\newlabel{fig:lovoscatter}{{2}{8}{Predicted vs.\ true Valence/Arousal, LOVO, Random Forest, pooled over all 32 subjects' 1{,}280 predictions. $R^2$ here is computed on the pooled scatter and therefore differs from Table~\ref {tab:lovo}'s per-subject-averaged value; both describe the same underlying weakness. Vertical striping reflects DEAP's discrete 1-9 rating scale}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-A}}Cross-subject pooling, feature corrections, and classification reframing}{8}{subsection.6.1}\protected@file@percent }
+\newlabel{subsec:results-pooled}{{\mbox  {VI-A}}{8}{Cross-subject pooling, feature corrections, and classification reframing}{subsection.6.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Top-15 feature importances (by mean of Valence and Arousal ranking), pooled Gradient Boosting, raw features (column (a) of Table~\ref {tab:pooled}).}}{8}{figure.3}\protected@file@percent }
+\newlabel{fig:importance}{{3}{8}{Top-15 feature importances (by mean of Valence and Arousal ranking), pooled Gradient Boosting, raw features (column (a) of Table~\ref {tab:pooled})}{figure.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {III}{\ignorespaces Window-level pooled regression, raw $R^2$, three feature configurations}}{9}{table.3}\protected@file@percent }
+\newlabel{tab:pooled}{{III}{9}{Window-level pooled regression, raw $R^2$, three feature configurations}{table.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {IV}{\ignorespaces Video-level pooled regression, unseen-subject GroupKFold, raw $R^2$}}{9}{table.4}\protected@file@percent }
+\newlabel{tab:videopooled}{{IV}{9}{Video-level pooled regression, unseen-subject GroupKFold, raw $R^2$}{table.4}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Raw $R^2$ across the four regression configurations reported in this paper (Tables~\ref {tab:window}, \ref {tab:lovo} col.\ Random Forest/Ridge, \ref {tab:pooled} col.\ (a), and \ref {tab:videopooled} col.\ +Per-subj.\ norm). Bars below the plotted range are truncated at $-1.05$; exact values in the corresponding tables.}}{9}{figure.4}\protected@file@percent }
+\newlabel{fig:r2summary}{{4}{9}{Raw $R^2$ across the four regression configurations reported in this paper (Tables~\ref {tab:window}, \ref {tab:lovo} col.\ Random Forest/Ridge, \ref {tab:pooled} col.\ (a), and \ref {tab:videopooled} col.\^^M+Per-subj.\ norm). Bars below the plotted range are truncated at $-1.05$; exact values in the corresponding tables}{figure.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {V}{\ignorespaces Video-level pooled classification, unseen-subject GroupKFold}}{10}{table.5}\protected@file@percent }
+\newlabel{tab:clf}{{V}{10}{Video-level pooled classification, unseen-subject GroupKFold}{table.5}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VI}{\ignorespaces Liking surface model comparison (5-fold, subject-grouped CV)}}{10}{table.6}\protected@file@percent }
+\newlabel{tab:liking}{{VI}{10}{Liking surface model comparison (5-fold, subject-grouped CV)}{table.6}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces Liking response surface $g(V,A)$ fit by kernel ridge regression on all 32 subjects' 1{,}280 (Valence, Arousal, Liking) triples. The white contour marks the top-decile optimal zone; the red star marks $(V^{*},A^{*})=(8.40,3.40)$.}}{10}{figure.5}\protected@file@percent }
+\newlabel{fig:surface}{{5}{10}{Liking response surface $g(V,A)$ fit by kernel ridge regression on all 32 subjects' 1{,}280 (Valence, Arousal, Liking) triples. The white contour marks the top-decile optimal zone; the red star marks $(V^{*},A^{*})=(8.40,3.40)$}{figure.5}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {\mbox  {VI-B}}Liking surface and gap analysis, worked example}{10}{subsection.6.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {6}{\ignorespaces The worked example's 59 window-level predictions plotted on the Liking surface of Fig.~\ref {fig:surface}. Inset: zoom on the prediction cluster (predictions vary little window-to-window); the three weak segments (red $\times $) sit at its lower-liking edge.}}{11}{figure.6}\protected@file@percent }
+\newlabel{fig:trajectory}{{6}{11}{The worked example's 59 window-level predictions plotted on the Liking surface of Fig.~\ref {fig:surface}. Inset: zoom on the prediction cluster (predictions vary little window-to-window); the three weak segments (red $\times $) sit at its lower-liking edge}{figure.6}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {VII}{\ignorespaces Live LLM output for the worked example (priority, scope, category, action)}}{11}{table.7}\protected@file@percent }
+\newlabel{tab:advice}{{VII}{11}{Live LLM output for the worked example (priority, scope, category, action)}{table.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {VII}Discussion}{11}{section.7}\protected@file@percent }
+\newlabel{sec:discussion}{{VII}{11}{Discussion}{section.7}{}}
+\bibstyle{IEEEtran}
+\bibdata{references}
+\bibcite{koelstra2012deap}{1}
+\@writefile{toc}{\contentsline {section}{\numberline {VIII}Conclusion and Future Work}{12}{section.8}\protected@file@percent }
+\newlabel{sec:conclusion}{{VIII}{12}{Conclusion and Future Work}{section.8}{}}
+\bibcite{lee2007neuromarketing}{2}
+\bibcite{russell1980circumplex}{3}
+\bibcite{sourcecoderepo}{4}
+\bibcite{alarcao2019emotions}{5}
+\bibcite{welch1967psd}{6}
+\bibcite{yao2024transformercnn}{7}
+\bibcite{yang2015tvcommercials}{8}
+\bibcite{raiesdana2022eegcar}{9}
+\bibcite{xie2025physllm}{10}
+\bibcite{breiman2001randomforests}{11}
+\bibcite{friedman2001gradientboosting}{12}
+\bibcite{pedregosa2011sklearn}{13}
+\bibcite{ioffe2015batchnorm}{14}
+\bibcite{loshchilov2019adamw}{15}
+\@writefile{toc}{\contentsline {section}{References}{13}{section*.1}\protected@file@percent }
+\gdef \@abspage@last{13}
